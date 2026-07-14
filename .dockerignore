@@ -1,0 +1,16 @@
+node_modules
+dist
+logs
+coverage
+
+.env
+.env.*
+!.env.example
+
+.git
+.gitignore
+README.md
+
+**/*.spec.ts
+**/*.spec.js
+test/

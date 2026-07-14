@@ -1,0 +1,67 @@
+import {
+  ExceptionFilter,
+  Catch,
+  ArgumentsHost,
+  HttpException,
+  Logger,
+} from "@nestjs/common";
+import { Request, Response } from "express";
+import { OrchestrationException } from "../exceptions/orchestration.exception";
+import { EnumStatusResponse } from "../enums/status-response";
+import { EnumStatusCode } from "../enums/response-status-code";
+import { extractHttpExceptionDetails } from "../utils/http-exception.utils";
+
+@Catch()
+export class OrchestrationExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(OrchestrationExceptionFilter.name);
+
+  catch(exception: unknown, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<Request>();
+
+    // Our custom OrchestrationException
+    if (exception instanceof OrchestrationException) {
+      this.logger.warn(
+        `[OrchestrationException] ${request.method} ${request.url} — ${exception.message}`,
+      );
+      return response.status(exception.code).json({
+        code: EnumStatusResponse.FAILURE,
+        statusCode: exception.statusCode,
+        message: exception.message,
+        data: null,
+      });
+    }
+
+    // NestJS built-in HttpException (validation, NotFoundException, etc.)
+    if (exception instanceof HttpException) {
+      const { status, message, validationErrors } =
+        extractHttpExceptionDetails(exception);
+
+      this.logger.warn(
+        `[HttpException] ${request.method} ${request.url} — ${message}`,
+      );
+
+      return response.status(status).json({
+        code: EnumStatusResponse.FAILURE,
+        statusCode: validationErrors
+          ? EnumStatusCode.INVALID_REQUEST
+          : EnumStatusCode.INTERNAL_SERVER_ERROR,
+        message,
+        data: validationErrors,
+      });
+    }
+
+    // Unknown/unhandled errors — most important to log
+    this.logger.error(
+      `[UnhandledException] ${request.method} ${request.url}`,
+      exception instanceof Error ? exception.stack : String(exception),
+    );
+    return response.status(500).json({
+      code: EnumStatusResponse.FAILURE,
+      statusCode: EnumStatusCode.INTERNAL_SERVER_ERROR,
+      message: "Internal server error",
+      data: null,
+    });
+  }
+}
