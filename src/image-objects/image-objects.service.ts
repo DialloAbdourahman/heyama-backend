@@ -167,7 +167,7 @@ export class ImageObjectsService {
     this.logger.log(`[remove] Image object deleted: ${imageObject._id}`);
 
     return OrchestrationResult.Success<null>({
-      statusCode: EnumStatusCode.RECOVERED_SUCCESSFULLY,
+      statusCode: EnumStatusCode.DELETED_SUCCESSFULLY,
       data: null,
       message: 'Image object deleted successfully',
     });
